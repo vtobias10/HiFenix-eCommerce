@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import NavbarAdmin from './navbarAdmin'; // Importa el NavbarAdmin
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const ModificarProducto = () => {
   const [id, setId] = useState('');
@@ -10,97 +10,86 @@ const ModificarProducto = () => {
     descripcion: '',
     precio: '',
     stock: '',
-    imagen: '',
-    categoria: '',
-    marca: ''
+    imagenUrl: ''  // Cambié "imagen" a "imagenUrl" para que coincida con tu base de datos
   });
   const [mensaje, setMensaje] = useState('');
   const [modalDescripcion, setModalDescripcion] = useState({ abierto: false, descripcion: '' });
+  
+  const navigate = useNavigate();
 
-  const location = useLocation();
-
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const idParam = params.get('id');
-
-    if (idParam) {
-      setId(idParam);
-      buscarProducto(idParam);
-    } else {
-      resetFormulario(); // Si no hay ID en la URL, resetea el formulario
+  // Función para buscar el producto por ID
+  const buscarProducto = async (id) => {
+    try {
+      const response = await fetch(`/productos/${id}`);
+      if (response.ok) {
+        const productoData = await response.json();
+        setProducto(productoData);
+        setFormData({
+          nombre: productoData.nombre,
+          descripcion: productoData.descripcion,
+          precio: productoData.precio,
+          stock: productoData.stock,
+          imagenUrl: productoData.imagenUrl
+        });
+        setMensaje('');
+      } else {
+        setProducto(null);
+        setMensaje('Producto no encontrado.');
+      }
+    } catch (error) {
+      setMensaje('Error al obtener el producto.');
     }
-  }, [location]);
+  };
 
-  const buscarProducto = (id) => {
-    const productosGuardados = JSON.parse(localStorage.getItem('productos')) || [];
-    const productoEncontrado = productosGuardados.find((prod) => prod.id === parseInt(id));
-
-    if (productoEncontrado) {
-      setProducto(productoEncontrado);
-      setFormData(productoEncontrado); // Llenar el formulario con los datos del producto encontrado
+  // Controlador de cambio de ID
+  const handleIdChange = (e) => {
+    const idIngresado = e.target.value;
+    setId(idIngresado);
+    if (idIngresado) {
+      buscarProducto(idIngresado); // Buscar el producto cuando el ID es ingresado
+    } else {
+      setProducto(null); // Limpiar si no hay ID
       setMensaje('');
-    } else {
-      setProducto(null);
-      setMensaje(id ? 'Producto no encontrado.' : '');
     }
   };
 
-  const resetFormulario = () => {
-    setId('');
-    setProducto(null);
-    setFormData({
-      nombre: '',
-      descripcion: '',
-      precio: '',
-      stock: '',
-      imagen: '',
-      categoria: '',
-      marca: ''
-    });
-    setMensaje('');
+  const handleGuardarCambios = async (e) => {
+    e.preventDefault();
+    
+    // Obtener el token del localStorage
+    const token = localStorage.getItem('authToken');  // Verifica que el token esté guardado
+  
+    if (!token) {
+      setMensaje('No se encuentra el token de autenticación.');
+      return;
+    }
+  
+    try {
+      const response = await fetch(`/productos/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,  // Agregar el token en los encabezados
+        },
+        body: JSON.stringify(formData),
+      });
+  
+      if (response.ok) {
+        setMensaje('Producto modificado exitosamente.');
+      } else {
+        setMensaje('Error al modificar el producto.');
+      }
+    } catch (error) {
+      setMensaje('Error en la conexión.');
+    }
   };
-
+  
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prevData) => ({
       ...prevData,
       [name]: value
     }));
-  };
-
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData((prevData) => ({
-          ...prevData,
-          imagen: reader.result
-        }));
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleGuardarCambios = (e) => {
-    e.preventDefault();
-
-    const productosGuardados = JSON.parse(localStorage.getItem('productos')) || [];
-    const indice = productosGuardados.findIndex((prod) => prod.id === parseInt(id));
-
-    if (indice !== -1) {
-      productosGuardados[indice] = { ...formData, id: parseInt(id) }; // Actualizar el producto
-      localStorage.setItem('productos', JSON.stringify(productosGuardados)); // Guardar en localStorage
-      setMensaje('Producto modificado exitosamente.');
-    } else {
-      setMensaje('Error al modificar el producto.');
-    }
-  };
-
-  const handleIdChange = (e) => {
-    const idIngresado = e.target.value;
-    setId(idIngresado);
-    buscarProducto(idIngresado); // Búsqueda en tiempo real
   };
 
   const abrirModalDescripcion = (descripcion) => {
@@ -142,29 +131,12 @@ const ModificarProducto = () => {
               <h2 className="text-xl font-bold mb-4">Información Actual</h2>
               <p><strong>ID:</strong> {producto.id}</p>
               <p><strong>Nombre:</strong> {producto.nombre}</p>
-              <p><strong>Categoría:</strong> {producto.categoria}</p>
-              <p><strong>Marca:</strong> {producto.marca}</p>
-              <p>
-                <strong>Descripción:</strong>{' '}
-                {producto.descripcion.length > 50 ? (
-                  <>
-                    {producto.descripcion.slice(0, 50)}...
-                    <button
-                      className="text-blue-500 underline ml-2"
-                      onClick={() => abrirModalDescripcion(producto.descripcion)}
-                    >
-                      Ver más
-                    </button>
-                  </>
-                ) : (
-                  producto.descripcion
-                )}
-              </p>
+              <p><strong>Descripción:</strong> {producto.descripcion}</p>
               <p><strong>Precio:</strong> ${producto.precio}</p>
               <p><strong>Stock:</strong> {producto.stock}</p>
-              {producto.imagen && (
+              {producto.imagenUrl && (
                 <img
-                  src={producto.imagen}
+                  src={producto.imagenUrl}
                   alt={producto.nombre}
                   className="w-42 h-42 object-cover rounded mt-4"
                 />
@@ -183,47 +155,6 @@ const ModificarProducto = () => {
                   className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 />
-              </div>
-              <div className="mb-4">
-                <label className="block text-gray-700 font-bold mb-2">Categoría</label>
-                <select
-                  name="categoria"
-                  value={formData.categoria}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                >
-                  <option value="" disabled>Selecciona una categoría</option>
-                  <option value="Procesadores">Procesadores</option>
-                  <option value="Placas de Video">Placas de Video</option>
-                  <option value="Memorias RAM">Memorias RAM</option>
-                  <option value="Auriculares">Auriculares</option>
-                  <option value="Teclados">Teclados</option>
-                  <option value="Mouses">Mouses</option>
-                  <option value="Joysticks">Joysticks</option>
-                  <option value="Micrófonos">Micrófonos</option>
-                  <option value="Otros">Otros</option>
-                </select>
-              </div>
-              <div className="mb-4">
-                <label className="block text-gray-700 font-bold mb-2">Marca</label>
-                <select
-                  name="marca"
-                  value={formData.marca}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                >
-                  <option value="" disabled>Selecciona una marca</option>
-                  <option value="Intel">Intel</option>
-                  <option value="AMD">AMD</option>
-                  <option value="Logitech">Logitech</option>
-                  <option value="Redragon">Redragon</option>
-                  <option value="Razer">Razer</option>
-                  <option value="Hyperx">Hyperx</option>
-                  <option value="Corsair">Corsair</option>
-                  <option value="Otros">Otros</option>
-                </select>
               </div>
               <div className="mb-4">
                 <label className="block text-gray-700 font-bold mb-2">Descripción</label>
@@ -258,12 +189,14 @@ const ModificarProducto = () => {
                 />
               </div>
               <div className="mb-4">
-                <label className="block text-gray-700 font-bold mb-2">Imagen del Producto</label>
+                <label className="block text-gray-700 font-bold mb-2">Imagen del Producto (URL)</label>
                 <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
+                  type="text"
+                  name="imagenUrl"
+                  value={formData.imagenUrl}
+                  onChange={handleInputChange}
                   className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
                 />
               </div>
               <button

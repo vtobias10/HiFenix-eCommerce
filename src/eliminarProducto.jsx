@@ -6,31 +6,52 @@ const EliminarProducto = () => {
   const [resultados, setResultados] = useState([]);
   const [mensaje, setMensaje] = useState('');
   const [modalDescripcion, setModalDescripcion] = useState({ abierto: false, descripcion: '' });
+  const [error, setError] = useState('');
 
   // Manejar cambios en el input de búsqueda
   const handleBusquedaChange = (e) => {
     const termino = e.target.value.toLowerCase();
     setBusqueda(termino);
 
-    const productosGuardados = JSON.parse(localStorage.getItem('productos')) || [];
-    const productosFiltrados = productosGuardados.filter(
-      (producto) =>
-        producto.nombre.toLowerCase().includes(termino) || producto.id.toString().includes(termino)
-    );
-
-    setResultados(productosFiltrados);
+    // Realizar una búsqueda en la base de datos
+    fetch(`/productos?search=${termino}`, {  // Aquí hacemos la búsqueda filtrada por el término
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('authToken')}`, // Autenticación con el token
+      },
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        setResultados(data);
+      })
+      .catch((err) => {
+        setError('Error al realizar la búsqueda.');
+      });
   };
 
   // Eliminar producto
   const handleEliminarProducto = (id) => {
     const confirmar = window.confirm('¿Estás seguro de que deseas eliminar este producto?');
     if (confirmar) {
-      const productosGuardados = JSON.parse(localStorage.getItem('productos')) || [];
-      const productosActualizados = productosGuardados.filter((producto) => producto.id !== id);
-
-      localStorage.setItem('productos', JSON.stringify(productosActualizados));
-      setResultados((prevResultados) => prevResultados.filter((producto) => producto.id !== id));
-      setMensaje('Producto eliminado exitosamente.');
+      fetch(`/productos/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`, // Autenticación con el token
+        },
+      })
+        .then((response) => {
+          if (response.ok) {
+            setResultados((prevResultados) => prevResultados.filter((producto) => producto.id !== id));
+            setMensaje('Producto eliminado exitosamente.');
+          } else {
+            setError('Error al eliminar el producto.');
+          }
+        })
+        .catch((err) => {
+          setError('Error en la conexión con el servidor.');
+        });
     }
   };
 
@@ -64,6 +85,7 @@ const EliminarProducto = () => {
             />
           </div>
           {mensaje && <p className="mt-4 text-green-500 font-bold">{mensaje}</p>}
+          {error && <p className="mt-4 text-red-500 font-bold">{error}</p>}
         </div>
 
         {/* Resultados de búsqueda */}
@@ -82,8 +104,7 @@ const EliminarProducto = () => {
                 <div>
                   <p><strong>ID:</strong> {producto.id}</p>
                   <p><strong>Nombre:</strong> {producto.nombre}</p>
-                  <p><strong>Categoría:</strong> {producto.categoria}</p>
-                  <p><strong>Marca:</strong> {producto.marca}</p>
+                  <p><strong>Descripción:</strong> {producto.descripcion}</p>
                   <button
                     className="text-blue-500 underline mt-1"
                     onClick={() => abrirModalDescripcion(producto.descripcion)}
@@ -94,9 +115,9 @@ const EliminarProducto = () => {
                   <p><strong>Stock:</strong> {producto.stock}</p>
                 </div>
                 <div className="flex items-center space-x-2">
-                  {producto.imagen && (
+                  {producto.imagenUrl && (
                     <img
-                      src={producto.imagen}
+                      src={producto.imagenUrl}
                       alt={producto.nombre}
                       className="w-16 h-16 object-cover rounded"
                     />
