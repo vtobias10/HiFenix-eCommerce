@@ -41,13 +41,18 @@ export class RolesGuard implements CanActivate {
       // Verificar si el usuario tiene uno de los roles permitidos
       const tieneRol = roles.some((role) => role === user.rol); // Compara con el rol del usuario en el payload
 
-      if (!tieneRol) {
-        throw new ForbiddenException(
-          'No tienes permisos para acceder a este recurso',
-        );
+      // Si el rol es admin, puede acceder a cualquier ID
+      if (user.rol === 'admin') {
+        return true;
       }
 
-      return true; // Si todo está correcto, se permite el acceso
+      // Si el rol no es admin, solo puede acceder a su propio ID
+      const userId = request.params.id; // Obtén el ID del usuario de la URL
+      if (userId !== user.id) {
+        throw new ForbiddenException('No tienes permisos para acceder a este recurso');
+      }
+
+      return tieneRol; // Si tiene el rol adecuado, se permite el acceso
     } catch {
       throw new ForbiddenException('Token no válido o expirado'); // Si el token no es válido o ha expirado
     }

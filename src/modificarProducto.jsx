@@ -10,15 +10,17 @@ const ModificarProducto = () => {
     descripcion: '',
     precio: '',
     stock: '',
-    imagenUrl: ''  // Cambié "imagen" a "imagenUrl" para que coincida con tu base de datos
+    imagenUrl: ''
   });
   const [mensaje, setMensaje] = useState('');
-  const [modalDescripcion, setModalDescripcion] = useState({ abierto: false, descripcion: '' });
-  
+
   const navigate = useNavigate();
+  const location = useLocation(); // Usamos el hook para obtener los parámetros pasados
 
   // Función para buscar el producto por ID
   const buscarProducto = async (id) => {
+    if (!id) return;  // Si no hay ID, no hacemos nada
+
     try {
       const response = await fetch(`/productos/${id}`);
       if (response.ok) {
@@ -31,34 +33,29 @@ const ModificarProducto = () => {
           stock: productoData.stock,
           imagenUrl: productoData.imagenUrl
         });
-        setMensaje('');
+        setMensaje(''); // Limpiamos el mensaje de error si se encuentra el producto
       } else {
         setProducto(null);
         setMensaje('Producto no encontrado.');
       }
     } catch (error) {
+      setProducto(null);
       setMensaje('Error al obtener el producto.');
     }
   };
 
-  // Controlador de cambio de ID
-  const handleIdChange = (e) => {
-    const idIngresado = e.target.value;
-    setId(idIngresado);
-    if (idIngresado) {
-      buscarProducto(idIngresado); // Buscar el producto cuando el ID es ingresado
-    } else {
-      setProducto(null); // Limpiar si no hay ID
-      setMensaje('');
+  // Extraemos el id desde el estado pasado en la navegación
+  useEffect(() => {
+    if (location.state && location.state.productoId) {
+      setId(location.state.productoId);  // Establecemos el id del producto
+      buscarProducto(location.state.productoId);  // Buscamos el producto por id
     }
-  };
+  }, [location.state]);
 
   const handleGuardarCambios = async (e) => {
     e.preventDefault();
     
-    // Obtener el token del localStorage
     const token = localStorage.getItem('authToken');  // Verifica que el token esté guardado
-  
     if (!token) {
       setMensaje('No se encuentra el token de autenticación.');
       return;
@@ -69,13 +66,14 @@ const ModificarProducto = () => {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,  // Agregar el token en los encabezados
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(formData),
       });
   
       if (response.ok) {
         setMensaje('Producto modificado exitosamente.');
+        // Puedes redirigir o hacer alguna acción después de guardar
       } else {
         setMensaje('Error al modificar el producto.');
       }
@@ -83,7 +81,7 @@ const ModificarProducto = () => {
       setMensaje('Error en la conexión.');
     }
   };
-  
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prevData) => ({
@@ -92,17 +90,8 @@ const ModificarProducto = () => {
     }));
   };
 
-  const abrirModalDescripcion = (descripcion) => {
-    setModalDescripcion({ abierto: true, descripcion });
-  };
-
-  const cerrarModalDescripcion = () => {
-    setModalDescripcion({ abierto: false, descripcion: '' });
-  };
-
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* NavbarAdmin */}
       <NavbarAdmin />
 
       <div className="flex flex-col items-center justify-center mt-6">
@@ -110,14 +99,19 @@ const ModificarProducto = () => {
 
         {mensaje && <p className={`mb-4 ${producto ? 'text-green-500' : 'text-red-500'} font-bold`}>{mensaje}</p>}
 
-        {/* Entrada para buscar producto */}
+        {/* Formulario de búsqueda o modificación */}
         <div className="w-full max-w-md bg-white p-6 rounded-lg shadow-lg mb-6">
           <div className="mb-4">
             <label className="block text-gray-700 font-bold mb-2">ID del Producto</label>
             <input
               type="number"
               value={id}
-              onChange={handleIdChange}
+              onChange={(e) => {
+                setId(e.target.value);  // Permite buscar un producto por ID
+                setProducto(null);  // Limpiamos los datos del producto al cambiar el ID
+                setMensaje('');  // Limpiamos el mensaje
+                buscarProducto(e.target.value);  // Realizamos la búsqueda inmediatamente
+              }}
               className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Ingrese el ID del producto"
             />
@@ -125,8 +119,7 @@ const ModificarProducto = () => {
         </div>
 
         {producto && (
-          <div className="w-full max-w-5xl bg-white p-6 rounded-lg shadow-lg flex space-x-6">
-            {/* Información actual del producto (izquierda) */}
+          <form onSubmit={handleGuardarCambios} className="w-full max-w-5xl bg-white p-6 rounded-lg shadow-lg flex space-x-6">
             <div className="w-1/2">
               <h2 className="text-xl font-bold mb-4">Información Actual</h2>
               <p><strong>ID:</strong> {producto.id}</p>
@@ -144,7 +137,16 @@ const ModificarProducto = () => {
             </div>
 
             {/* Formulario de modificación (derecha) */}
-            <form onSubmit={handleGuardarCambios} className="w-1/2">
+            <div className="w-1/2">
+              <div className="mb-4">
+                <label className="block text-gray-700 font-bold mb-2">ID del Producto</label>
+                <input
+                  type="text"
+                  value={id}
+                  className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  readOnly // Hace que el campo sea no editable
+                />
+              </div>
               <div className="mb-4">
                 <label className="block text-gray-700 font-bold mb-2">Nombre del Producto</label>
                 <input
@@ -205,24 +207,8 @@ const ModificarProducto = () => {
               >
                 Guardar Cambios
               </button>
-            </form>
-          </div>
-        )}
-
-        {/* Modal de descripción */}
-        {modalDescripcion.abierto && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-            <div className="bg-white p-6 rounded shadow-lg max-w-lg w-full">
-              <h2 className="text-xl font-bold mb-4">Descripción del Producto</h2>
-              <p>{modalDescripcion.descripcion}</p>
-              <button
-                className="mt-4 bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-                onClick={cerrarModalDescripcion}
-              >
-                Cerrar
-              </button>
             </div>
-          </div>
+          </form>
         )}
       </div>
     </div>

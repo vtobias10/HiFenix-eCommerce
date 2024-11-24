@@ -77,7 +77,7 @@ export class UsuarioService {
   }
 
   // Adaptado para incluir el rol en la respuesta
-  async login(loginUsuarioDto: LoginUsuarioDto): Promise<{ token: string, rol: string }> {
+  async login(loginUsuarioDto: LoginUsuarioDto): Promise<{ token: string, rol: string, id: number }> {
     console.log('Intentando iniciar sesión con:', loginUsuarioDto); // Log de las credenciales recibidas
 
     const usuario = await this.usuarioRepository.findOne({
@@ -115,6 +115,6 @@ export class UsuarioService {
     console.log('Token generado:', token); // Log del token generado
 
     // Devolvemos el token y el rol
-    return { token, rol: payload.rol };
+    return { token, rol: payload.rol, id: payload.id };
   }
 }

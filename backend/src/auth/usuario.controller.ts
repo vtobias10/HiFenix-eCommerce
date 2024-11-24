@@ -7,6 +7,7 @@ import {
   Param,
   NotFoundException,
   UseGuards,
+  Request,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { UsuarioService } from './usuario.service';
@@ -33,13 +34,12 @@ export class UsuarioController {
     return this.usuarioService.obtenerTodos();
   }
 
-  // Este endpoint también está protegido por RolesGuard, solo accesible por admin
+  // Este endpoint está protegido por RolesGuard, solo accesible por admin o el propio usuario
   @Get(':id')
-  @Roles('admin') // Solo accesible por usuarios con el rol 'admin'
-  @UseGuards(RolesGuard)
+  @UseGuards(RolesGuard) // Protección de RolesGuard, verifica si es admin o si es el propio usuario
   @ApiOperation({ summary: 'Ver un usuario por ID' })
   @ApiResponseStandard('Usuario encontrado con éxito')
-  async obtenerPorId(@Param('id') id: number): Promise<Usuario> {
+  async obtenerPorId(@Param('id') id: number, @Request() req: any): Promise<Usuario> {
     const usuario = await this.usuarioService.obtenerPorId(id);
     if (!usuario) {
       throw new NotFoundException('Usuario no encontrado');

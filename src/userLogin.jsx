@@ -36,7 +36,7 @@ const UserLogin = () => {
         if (data.token && data.rol) {
           // Guardar el token y rol en localStorage
           localStorage.setItem('authToken', data.token);
-          localStorage.setItem('currentUser', JSON.stringify({ email, role: data.rol }));
+          localStorage.setItem('currentUser', JSON.stringify({ email, role: data.rol, id: data.id}));
 
           // Redirigir según el rol
           if (data.rol === 'admin') {

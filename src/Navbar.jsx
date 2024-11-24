@@ -54,13 +54,11 @@ const Navbar = () => {
       setUser(null);
     }
 
-    // Cargar productos desde localStorage
     const productosGuardados = JSON.parse(localStorage.getItem('productos')) || [];
     setProductos(productosGuardados);
   }, []);
 
   useEffect(() => {
-    // Filtrar productos en tiempo real basado en la búsqueda
     if (searchQuery) {
       const resultados = productos.filter((producto) =>
         producto.nombre.toLowerCase().includes(searchQuery.toLowerCase())
@@ -72,9 +70,8 @@ const Navbar = () => {
   }, [searchQuery, productos]);
 
   const handleSearchSelect = (producto) => {
-    // Guardar el producto seleccionado en localStorage y redirigir a vistaProductos.jsx
     localStorage.setItem('productoSeleccionado', JSON.stringify(producto));
-    setSearchQuery(''); // Limpiar el campo de búsqueda
+    setSearchQuery('');
     navigate('/vistaProductos');
   };
 
@@ -104,16 +101,6 @@ const Navbar = () => {
     }
   };
 
-  const scrollToNovedades = () => {
-    navigate('/');
-    setTimeout(() => {
-      const novedadesSection = document.getElementById('novedades');
-      if (novedadesSection) {
-        novedadesSection.scrollIntoView({ behavior: 'smooth' });
-      }
-    }, 100);
-  };
-
   const handleLogout = () => {
     localStorage.removeItem('authToken');
     localStorage.removeItem('currentUser');
@@ -133,6 +120,26 @@ const Navbar = () => {
   const handleAppRedirect = () => {
     navigate('/');
   };
+
+  // Obtener el nombre del usuario desde el backend
+  useEffect(() => {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser')); // Extraer usuario desde localStorage
+    if (isLoggedIn && currentUser && currentUser.id) {
+      const fetchUserDetails = async () => {
+        const token = localStorage.getItem('authToken');
+        const response = await fetch(`/usuarios/${currentUser.id}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const data = await response.json();
+        if (data && data.nombre) {
+          setUser({ ...currentUser, nombre: data.nombre });
+        }
+      };
+      fetchUserDetails();
+    }
+  }, [isLoggedIn]);
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-md py-3 px-6 flex items-center justify-between">
@@ -189,125 +196,87 @@ const Navbar = () => {
           )}
         </div>
 
-        {/* Botón de Novedades */}
-        <a
-          href="#novedades"
-          className="text-gray-700 hover:text-gray-900"
-          onClick={(e) => {
-            e.preventDefault();
-            scrollToNovedades();
-          }}
-        >
-          Novedades
-        </a>
-      </div>
-
-      {/* Barra de búsqueda */}
-      <div className="flex-grow mx-8 relative">
-        <input
-          type="text"
-          placeholder="Buscar productos..."
-          className="w-full max-w-lg px-4 py-2 rounded-full bg-gray-100 text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-400"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-        {filteredProductos.length > 0 && (
-          <ul className="absolute w-full max-w-lg bg-white border border-gray-300 rounded-lg shadow-lg mt-2 z-50">
-            {filteredProductos.map((producto) => (
-              <li
-                key={producto.id}
-                className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                onClick={() => handleSearchSelect(producto)}
-              >
-                <img
-                  src={producto.imagen || 'https://via.placeholder.com/50'}
-                  alt={producto.nombre}
-                  className="w-10 h-10 object-cover rounded-full mr-4"
-                />
-                <span>{producto.nombre}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <div className="flex items-center space-x-4">
-        {user?.role === 'admin' && (
-          <button
-            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-500 transition duration-300"
-            onClick={() => navigate('/menuAdmin')}
-          >
-            Vista Admin
-          </button>
-        )}
-
-        {/* Icono del Carrito */}
-        <div className="relative">
-          <FaShoppingCart
-            className="text-gray-700 hover:text-gray-900 cursor-pointer text-2xl"
-            onClick={() => navigate('/Carrito')}
+        {/* Barra de búsqueda */}
+        <div className="flex-grow mx-8 relative">
+          <input
+            type="text"
+            placeholder="Buscar productos..."
+            className="w-full max-w-lg px-4 py-2 rounded-full bg-gray-100 text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-400"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
-          {cantidadCarrito > 0 && (
-            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full px-2">
-              {cantidadCarrito}
-            </span>
+          {filteredProductos.length > 0 && (
+            <ul className="absolute w-full max-w-lg bg-white border border-gray-300 rounded-lg shadow-lg mt-2 z-50">
+              {filteredProductos.map((producto) => (
+                <li
+                  key={producto.id}
+                  className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                  onClick={() => handleSearchSelect(producto)}
+                >
+                  <img
+                    src={producto.imagen || 'https://via.placeholder.com/50'}
+                    alt={producto.nombre}
+                    className="w-10 h-10 object-cover rounded-full mr-4"
+                  />
+                  <span>{producto.nombre}</span>
+                </li>
+              ))}
+            </ul>
           )}
         </div>
-
-{/* Dropdown de Usuario */}
-{isLoggedIn ? (
-  <div className="relative">
-    <button
-      className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 cursor-pointer"
-      onClick={() => toggleDropdown('usuario')}
-    >
-      <span>
-        {user?.firstName} {user?.lastName}
-      </span>
-      <FaCaretDown />
-    </button>
-    {dropdownUsuarioOpen && (
-      <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-300 rounded-lg shadow-lg">
-        <button
-          className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
-          onClick={() => navigate('/verPerfil')}
-        >
-          Ver Perfil
-        </button>
-        <button
-          className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
-          onClick={() => navigate('/misCompras')}
-        >
-          Mis Compras
-        </button>
-        <button
-          className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
-          onClick={handleLogout}
-        >
-          Cerrar sesión
-        </button>
       </div>
-    )}
-  </div>
-) : (
-  <div className="flex items-center space-x-4">
-    <button
-      className="bg-black text-white px-4 py-2 rounded hover:bg-gray-600"
-      onClick={handleLoginRedirect}
-    >
-      Iniciar sesión
-    </button>
-    <button
-      className="bg-black text-white px-4 py-2 rounded hover:bg-gray-600"
-      onClick={handleRegisterRedirect}
-    >
-      Registrarse
-    </button>
-  </div>
-)}
 
-
-      </div>
+      {/* Dropdown de Usuario */}
+      {isLoggedIn ? (
+        <div className="relative">
+          <button
+            className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 cursor-pointer"
+            onClick={() => toggleDropdown('usuario')}
+          >
+            <span>
+              {user?.nombre}
+            </span>
+            <FaCaretDown />
+          </button>
+          {dropdownUsuarioOpen && (
+            <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-300 rounded-lg shadow-lg">
+              <button
+                className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
+                onClick={() => navigate('/verPerfil')}
+              >
+                Ver Perfil
+              </button>
+              <button
+                className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
+                onClick={() => navigate('/misCompras')}
+              >
+                Mis Compras
+              </button>
+              <button
+                className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
+                onClick={handleLogout}
+              >
+                Cerrar sesión
+              </button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="flex items-center space-x-4">
+          <button
+            className="bg-black text-white px-4 py-2 rounded hover:bg-gray-600"
+            onClick={handleLoginRedirect}
+          >
+            Iniciar sesión
+          </button>
+          <button
+            className="bg-black text-white px-4 py-2 rounded hover:bg-gray-600"
+            onClick={handleRegisterRedirect}
+          >
+            Registrarse
+          </button>
+        </div>
+      )}
     </nav>
   );
 };
